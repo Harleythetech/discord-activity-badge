@@ -1,10 +1,8 @@
-name: "Discord Rich Presence Activity Badge"
-description: "A containerized action that bridges the Discord User's Rich Presence to a Presentable Badge on their Special Repository (Github Profile). Powered by <b>Python + Asnycio + discord.py"
+name: "Discord Activity Badge"
+description: "Bridge your Discord State and Activities to a Representable Badge on your repository to show your current status."
 author: "Janrey 'CodexLink' Licas"
 
-
-# ! Are you looking for the default values? Please check src/elements/constants.py or the README.md for more information.
-# ! It was placed on that certain file because of the resolve over invalid value functionality.
+# ! Are you looking for the default values of these parameters? Please check src/elements/constants.py or the README.md for more information.
 
 inputs:
   # # Required Parameters
@@ -56,7 +54,7 @@ inputs:
     description: "Overrides `Discord Activity` (Subject String) and User State with the state of `Stream` with custom strings."
     required: False
 
-  UNSPECIFIED_ACTIVITY_STRING:
+  SPOTIFY_ACTIVITY_STRING:
     description: "Overrides `Discord Activity` (Subject String) and User State with the state of `Unspecified` with custom strings."
     required: False
 
@@ -92,7 +90,7 @@ inputs:
     description: "Renders status badge color whenever there's a Stream activity. Please check README.md for more information about this parameter."
     required: false
 
-  UNSPECIFIED_ACTIVITY_COLOR:
+  SPOTIFY_ACTIVITY_COLOR:
     description: "Renders status badge color whenever there's a Unspecified activity. Please check README.md for more information about this parameter."
     required: false
 
@@ -112,15 +110,11 @@ inputs:
     description: "Overrides the status color when the user is in Offline state."
     required: False
 
-  STATUS_SUBJECT_STRING:
+  STATIC_SUBJECT_STRING:
     description: "Statically declare a certain string to display on the subject. If declared, []_ACTIVITY_STRING and []_STATUS_STRING will be ignored."
     required: False
 
   # # Optional Parameters — Context
-  TIME_DISPLAY_SHORTHAND:
-    description: "Displays the time with hours and minutes shorthanded to h and m."
-    required: false
-
   PREFERRED_PRESENCE_CONTEXT:
     description: "Overrides additional information to append in the badge. So far, only `DETAILS`, and `STATE` are allowed to be appended since it shows the other context of the application."
     required: false
@@ -137,12 +131,20 @@ inputs:
     description: "Overrides the string appended whenever the time is displayed for remaining. This is effective only when `SHOW_TIME_DURATION` is `True`."
     required: false
 
+  TIME_DISPLAY_SHORTHAND:
+    description: "Displays the time with hours and minutes shorthanded to h and m."
+    required: false
+
   # # Optional Parameters — Preferences
   PREFERRED_ACTIVITY_TO_DISPLAY:
     description: "Renders a particular activity as a prioritized activity. If the preferred activity does not exist, it will render any activity by default."
     required: false
 
   SHIFT_STATUS_ACTIVITY_COLORS:
+    description: "Interchange state and activity colors. This is useful only if you want to retain your state color position even though `APPEND_STATE_ON_SUBJECT` is true."
+    required: False
+
+  SPOTIFY_INCLUDE_ALBUM_PLAYLIST_NAME:
     description: "Interchange state and activity colors. This is useful only if you want to retain your state color position even though `APPEND_STATE_ON_SUBJECT` is true."
     required: False
 
@@ -155,6 +157,10 @@ inputs:
     description: "Runs the usual process except it doesn't commit changes."
     required: false
 
+branding:
+  icon: "activity"
+  color: "orange"
+
 runs:
   using: "docker"
-  image: "docker://codexlink/discord-rich-presence-activity-badge:latest"
+  image: "docker://codexlink/discord-activity-badge:latest"

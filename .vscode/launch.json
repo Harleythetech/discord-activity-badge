@@ -1,0 +1,34 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [{
+			"name": "entrypoint.py (Do-Not-Commit + Logger DEBUG)",
+			"type": "python",
+			"request": "launch",
+			"program": "src/entrypoint.py",
+			"console": "integratedTerminal",
+			"justMyCode": false,
+			"args": ["--do-not-commit", "--logger-level", "DEBUG"]
+		},
+		{
+			"name": "entrypoint.py (Commit + Logger INFO)",
+			"type": "python",
+			"request": "launch",
+			"program": "src/entrypoint.py",
+			"console": "integratedTerminal",
+			"justMyCode": false,
+			"args": ["--logger-level", "DEBUG"]
+		},
+		{
+			"name": "entrypoint.py (Do-Not-Commit + Log File + Logger DEBUG)",
+			"type": "python",
+			"request": "launch",
+			"program": "src/entrypoint.py",
+			"console": "integratedTerminal",
+			"justMyCode": false,
+			"args": ["--do-not-commit", "--generate-log-file", "--logger-level", "DEBUG"]
+		}
+	]
+}

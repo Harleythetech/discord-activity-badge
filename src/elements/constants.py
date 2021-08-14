@@ -14,24 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-# Classifications of constants of any kind. (limiters, choices, etc.) | constants.py
-# Version dev.0.06232021
-
-
-if __name__ == "__main__":
-    from .exceptions import IsolatedExecNotAllowed
-
-    raise IsolatedExecNotAllowed
-
 from datetime import datetime
 from enum import Enum, IntEnum, auto, unique
 from logging import CRITICAL, DEBUG, ERROR, INFO, WARNING
 from time import strftime
-from typing import Any, Final, TypedDict, Union
+from typing import Any, Final, Optional, TypedDict
+from aiohttp import BasicAuth
 
-from discord import Intents, Status
+from discord import Intents
+from discord.enums import Enum as DiscordEnum
 
-from .typing import BadgeElements, BadgeStructure, ColorHEX, HttpsURL, RegExp
+from .typing import (
+    BadgeElements,
+    BadgeStructure,
+    ColorHEX,
+    HttpsURL,
+    READMEContent,
+    READMEIntegritySHA,
+    RegExp,
+)
 
 # # Badge Generator Constants
 BADGE_BASE_URL: Final[HttpsURL] = HttpsURL("https://badgen.net/badge/")
@@ -42,7 +43,7 @@ BADGE_BASE_SUBJECT: Final[BadgeElements] = BadgeElements("Discord User")
 
 BADGE_BASE_MARKDOWN: BadgeStructure = BadgeStructure(
     "[![{0}]({1})]({2})"
-)  # todo: Document this one later.
+)  # [0] Represents the Generated Badge, [1] Represents Generate Badge URL, [3] Represents Any Redirect Link
 
 BADGE_REGEX_STRUCT_IDENTIFIER: Final[RegExp] = RegExp(
     r"(?P<Delimiter>\[\!\[)(?P<badge_identifier>([a-zA-Z0-9_()-]+(\s|\b)){1,6})\]\((?P<badge_url>https://[a-z]+.[a-z]{2,4})/(?P<entrypoint>\w+)/(?P<subject_badge>[^...]+\b)/(?P<status_badge>[^?]+)\?(?P<params>[^)]+)\)\]\((?P<redirect_url>https://[a-z]+.[a-z]{2,4}/[^)]+)\)"
@@ -55,88 +56,137 @@ class Base64Actions(IntEnum):
     ENCODE_BUFFER_TO_B64 = auto()
 
 
-B64_ACTION_FILENAME: str = "._temp"
-
 # # Classified Arguments Information
 ARG_CONSTANTS: Final[dict[str, str]] = {
-    "ENTRY_PARSER_DESC": "An application that runs under workflow to evaluate User's Discord Activity Presence to Displayable Badge for their README.md.",
-    "ENTRY_PARSER_EPILOG": "The use of arguments are intended for debugging purposes only. Please be careful.",
-    "HELP_DESC_DRY_RUN": "Runs the whole script without commiting changes to external involved factors (ie. README.md)",
-    "HELP_DESC_LOG_TO_CONSOLE": "Prints the log output to the console, whenever the case.",
-    "HELP_DESC_NO_ALERT_USR": "Does not alert the user / developer from the possible crashes through Direct Messages (this also invokes the do-not-send logs.)",
-    "HELP_DESC_NO_LOG_TO_FILE": "Disables logging to file but does not surpress outputting logs to console, if specified.",
-    "HELP_DESC_RUNNING_LOCALLY": "Allows the script from loading .env. This can raise or terminate if '.env' cannot be found.",
-    "HELP_DESC_VERBOSE_CLIENT": "Allows Discord Client API to log. This is useful to check if Discord.py is doing something while the log is silent.",
+    "ENTRY_PARSER_PROG": "Discord Activity Fetcher and Badge Constructor (entrypoint.py)",
+    "ENTRY_PARSER_DESC": "An application that runs under workflow container to evaluate User's Discord Activities to a Displayable Badge for their Special Repository's README.",
+    "ENTRY_PARSER_EPILOG": "The use of arguments are intended for debugging purposes and development only. Please be careful and be vigilant about the requirements to make certain arguments functioning.",
+    "HELP_DESC_NO_ALERT_LOCAL_USR": "Disables the Client Bot to send messages through PM whenever there's an error occured inside of Discord Client API Handler Class and WebSocket.",
+    "HELP_DESC_DONT_COMMIT": "Runs the whole script without commiting and pushing some changes to README.md.",
+    "HELP_DESC_GENERATE_LOG_FILE": "Enables logging to file. (File is viewable when running-on-local).",
+    "HELP_DESC_DONT_LOG_TO_CONSOLE": "Disables printing log output to the console. (This is effective when running-on-local)",
+    "HELP_DESC_RUNNING_LOCALLY": "Allows the script from running locally by loading .env instead of automatic invokation of values in Github Runner. This can raise or terminate the script if '.env' cannot be found.",
+    "HELP_DESC_LOGGER_LEVEL": "Sets the logger level coverage that the logger object can display.",
+    "HELP_DESC_VERBOSITY": "Sets the module coverage that the logger object can output, the top module will cover most of the modules that requires logging.",
 }
 
-# # Constraints
-_date_on_exec: datetime = datetime.now()
-_eval_date_on_exec: str = _date_on_exec.strftime("%m/%d/%y — %I:%M:%S %p")
-MAXIMUM_RUNTIME_SECONDS = 10
+# # Discord Client Intents
+DISCORD_CLIENT_INTENTS: Intents = Intents.none()
+DISCORD_CLIENT_INTENTS.guilds = True
+DISCORD_CLIENT_INTENTS.members = True
+DISCORD_CLIENT_INTENTS.presences = True
+
+
+# # Discord User Client Dictionary Structure
+class DISCORD_USER_STRUCT(TypedDict):
+    id: int
+    name: str
+    discriminator: str  # I don't know why it was declared as `str` when its a 4-digit which should be `int`.
+    statuses: dict[str, DiscordEnum]
+    activities: dict[str, Any]  # To many elements to cover, let it be Any.
+
+
+BLUEPRINT_INIT_VALUES: DISCORD_USER_STRUCT = {
+    "id": 0,
+    "name": "",
+    "discriminator": "",
+    "statuses": {},
+    "activities": {},
+}
+
 
 # # Enumerations
 @unique
 class ContextOnSubject(IntEnum):
-    CONTEXT_DISABLED = auto()
-    DETAILS = auto()
-    STATE = auto()
+    CONTEXT_DISABLED: int = auto()
+    DETAILS: int = auto()
+    STATE: int = auto()
 
-class ExitReturnCodes(IntEnum): # todo: Add exception that can weak refer to EXIT_SUCCESS despite different return code.
-    EXCEPTION_EXIT = -1
-    EXIT_HELP = 0
-    EXIT_SUCCESS = 0
+
+class ExitReturnCodes(IntEnum):
+    EXIT_HELP: Final[int] = 0
+    ENV_KEY_DOES_NOT_EXISTS_ON_DICT: Final[int] = 1
+    ENV_KEY_DOES_NOT_EXISTS_ON_MACHINE: Final[int] = 1
+    EXCEPTION_EXIT: Final[int] = 1
+    ILLEGAL_CONDITION_EXIT: Final[int] = 1
+    ILLEGAL_IMPORT_EXIT: Final[int] = 1
+    NO_CONDITION_IMPLEMENTED_EXIT: Final[int] = 1
+    RATE_LIMITED_EXIT: Final[int] = 1
+
 
 @unique
 class GithubRunnerActions(IntEnum):
-    FETCH_README = auto()
-    COMMIT_CHANGES = auto()
+    FETCH_README: int = auto()
+    COMMIT_CHANGES: int = auto()
+
+
+@unique
+class GithubRunnerLevelMessages(Enum):
+    WARNING: Final[str] = "warning"
+    ERROR: Final[str] = "error"
 
 
 @unique
 class LoggerLevelCoverage(IntEnum):
-    DEBUG = DEBUG
-    INFO = INFO
-    WARNING = WARNING
-    ERROR = ERROR
-    CRITICAL = CRITICAL
+    DEBUG: Final[int] = DEBUG
+    INFO: Final[int] = INFO
+    WARNING: Final[int] = WARNING
+    ERROR: Final[int] = ERROR
+    CRITICAL: Final[int] = CRITICAL
+
+
+@unique
+class LoggerRootLevel(Enum):
+    SCRIPT_LEVEL: Final[str] = "__main__"
+    SCRIPT_PLUS_DISCORD: Final[str] = "discord"
+    LOOP_LEVEL: Final[str] = "asyncio"
 
 
 @unique
 class PreferredActivityDisplay(IntEnum):
-    CUSTOM_ACTIVITY = auto()
-    GAME_ACTIVITY = auto()
-    RICH_PRESENCE = auto()
-    STREAM_ACTIVITY = auto()
-    UNSPECIFIED_ACTIVITY = auto()
+    CUSTOM_ACTIVITY: int = auto()
+    GAME_ACTIVITY: int = auto()
+    RICH_PRESENCE: int = auto()
+    STREAM_ACTIVITY: int = auto()
+    SPOTIFY_ACTIVITY: int = auto()
 
 
 @unique
 class PreferredTimeDisplay(IntEnum):
-    TIME_DISABLED = auto()
-    HOURS = auto()
-    HOURS_MINUTES = auto()
-    MINUTES = auto()
-    SECONDS = auto()
+    TIME_DISABLED: int = auto()
+    HOURS: int = auto()
+    HOURS_MINUTES: int = auto()
+    MINUTES: int = auto()
+    SECONDS: int = auto()
 
 
-@unique
-class ResponseTypes(IntEnum):
-    RESPONSE = 0
-    RESPONSE_STATUS = 1
-    IS_OKAY = 2
+# # HTTPS Request Header Dictionary Structure
+class REQUEST_HEADER(TypedDict):
+    headers: dict[str, str]
+    auth: BasicAuth
 
 
-"""
-    # Map Structure
-    The following constants is a mapped dictionary structure. It will be used to evaluate environment variable's values
-    and serialize as they respect the `expected_type` per fields. A `fallback_value` will be used if a certain function fails
-    to serialize a certain value. Keep in mind that fallback is supported for optional inputs only! Required inputs will error
-    if they fail to meet the expected type.
-"""
+class COMMIT_REQUEST_PAYLOAD(TypedDict):
+    content: Optional[READMEContent]
+    message: Optional[str]
+    sha: Optional[READMEIntegritySHA]
+    committer: Optional[dict[str, str]]
 
-ENV_STRUCT_CONSTRAINTS: Final[
+
+# # Logger Constants
+ROOT_LOCATION: Final[str] = "../"
+ENV_FILENAME: Final[str] = ".env"
+LOGGER_FILENAME: Final[str] = strftime("%m%d%Y-%H%M-") + "discord-activity-badge.log"
+LOGGER_OUTPUT_FORMAT: Final[
+    str
+] = "[%(relativeCreated)dms, %(levelname)s] at %(module)s.py:%(lineno)d -> %(message)s"
+
+
+# # Map Structure
+# * This replicates actions.yml but with better handling for invalid values and replacing them (if invalid) with fallback_value to avoid pedantic errors.
+ENV_STRUCT_CONSTRAINTS: Final[  # * If you have been referred to action.yml, this is the right place.
     dict[str, Any]
-] = {  # ! Check /action.yml for more information.
+] = {
     # # Github Actions Environmental Variables
     "GITHUB_API_URL": {
         "expected_type": str,
@@ -156,7 +206,7 @@ ENV_STRUCT_CONSTRAINTS: Final[
     },
     "INPUT_COMMIT_MESSAGE": {
         "expected_type": str,
-        "fallback_value": f"Discord Activity Badge Updated as of {_eval_date_on_exec}",
+        "fallback_value": "Discord Activity Badge has been Updated!",
         "is_required": False,
     },
     "INPUT_DISCORD_BOT_TOKEN": {
@@ -187,7 +237,7 @@ ENV_STRUCT_CONSTRAINTS: Final[
     # # Optional Parameters — Colors and Intentions.
     "INPUT_CUSTOM_ACTIVITY_STRING": {
         "expected_type": str,
-        "fallback_value": None,
+        "fallback_value": "",
         "is_required": False,
     },
     "INPUT_GAME_ACTIVITY_STRING": {
@@ -205,9 +255,9 @@ ENV_STRUCT_CONSTRAINTS: Final[
         "fallback_value": "Currently Streaming",
         "is_required": False,
     },
-    "INPUT_UNSPECIFIED_ACTIVITY_STRING": {
+    "INPUT_SPOTIFY_ACTIVITY_STRING": {
         "expected_type": str,
-        "fallback_value": "???",  # todo: This.
+        "fallback_value": "Listening to",
         "is_required": False,
     },
     "INPUT_ONLINE_STATUS_STRING": {
@@ -250,9 +300,9 @@ ENV_STRUCT_CONSTRAINTS: Final[
         "fallback_value": "#4d14df",
         "is_required": False,
     },
-    "INPUT_UNSPECIFIED_ACTIVITY_COLOR": {
+    "INPUT_SPOTIFY_ACTIVITY_COLOR": {
         "expected_type": ColorHEX,
-        "fallback_value": "???",  # todo: This.
+        "fallback_value": "#1db954",
         "is_required": False,
     },
     "INPUT_ONLINE_STATUS_COLOR": {
@@ -293,7 +343,7 @@ ENV_STRUCT_CONSTRAINTS: Final[
     },
     "INPUT_TIME_DISPLAY_OUTPUT": {
         "expected_type": PreferredTimeDisplay,
-        "fallback_value": PreferredTimeDisplay.TIME_DISABLED,
+        "fallback_value": PreferredTimeDisplay.HOURS_MINUTES,
         "is_required": False,
     },
     "INPUT_TIME_DISPLAY_ELAPSED_OVERRIDE_STRING": {
@@ -317,11 +367,16 @@ ENV_STRUCT_CONSTRAINTS: Final[
         "fallback_value": False,
         "is_required": False,
     },
+    "INPUT_SPOTIFY_INCLUDE_ALBUM_PLAYLIST_NAME": {
+        "expected_type": bool,
+        "fallback_value": False,
+        "is_required": False,
+    },
     "INPUT_STATUS_CONTEXT_SEPERATOR": {
         "expected_type": str,
         "fallback_value": None,
         "is_required": False,
-    },  # ! Bug, cannot process the variable and turns to None whenver there's no fallback_value and there's a value inside of the .env.
+    },
     # # Development Parameters
     "INPUT_IS_DRY_RUN": {
         "expected_type": bool,
@@ -330,48 +385,5 @@ ENV_STRUCT_CONSTRAINTS: Final[
     },
 }
 
-# # Discord User Client Structure
-
-
-class DISCORD_USER_STRUCT(TypedDict):
-    id: int
-    name: str
-    discriminator: str  # I don't know why it was declared as `str` when its 4-digit which is `int`.
-    statuses: dict[str, Union[Enum, Status, str]]
-    activities: dict[str, Any]  # To many elements to cover.
-
-
-BLUEPRINT_INIT_VALUES: DISCORD_USER_STRUCT = {
-    "id": 0,
-    "name": "",
-    "discriminator": "",
-    "statuses": {},
-    "activities": {},
-}
-
-
-# # Discord Client Intents
-DISCORD_CLIENT_INTENTS: Intents = Intents.none()
-DISCORD_CLIENT_INTENTS.guilds = True
-DISCORD_CLIENT_INTENTS.members = True
-DISCORD_CLIENT_INTENTS.presences = True
-
-# # Identification of Return Codes
-RET_DOTENV_NOT_FOUND: Final[int] = -1
-
-# # Message of Return Codes
-# ???
-
-# # Logger Information
-ROOT_LOCATION: Final[str] = "../"
-ENV_FILENAME: Final[str] = ".env"
-LOGGER_FILENAME: Final[str] = (
-    strftime("%m%d%Y-%H%M-") + "discord-activity-badge.log"
-)
-LOGGER_OUTPUT_FORMAT: Final[
-    str
-] = "[%(relativeCreated)d ms, %(levelname)s\t]\tat %(module)s.py:%(lineno)d -> %(message)s"
-
-
 # # Time Constants
-TIME_STRINGS: list[str] = ["hours", "minutes"]
+TIME_STRINGS: list[str] = ["hours", "minutes", "seconds"]
